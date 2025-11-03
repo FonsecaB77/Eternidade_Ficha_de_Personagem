@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha de Personagem RPG</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #1e1e1e;
+    color: #fff;
+  }
+
+  #mainContent {
+    flex: 1;
+    display: flex;
+  }
+
+  /* Parte esquerda */
+  #left {
+    width: 250px;
+    background-color: #2a2a2a;
+    padding: 15px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #left button {
+    padding: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: none;
+    background-color: #444;
+    color: #fff;
+  }
+
+  #charactersList {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .charItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #333;
+    margin-bottom: 5px;
+    padding: 5px;
+  }
+
+  .charItem button {
+    margin-left: 5px;
+    background-color: #b22222;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
+
+  .charItem span {
+    cursor: pointer;
+  }
+
+  /* Parte direita */
+  #right {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: none; /* inicialmente oculta */
+  }
+
+  #right input, #right select {
+    width: 100%;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+    box-sizing: border-box;
+    max-width: 300px; /* limita largura do input */
+  }
+
+  .attribute {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    max-width: 300px;
+  }
+
+  .attribute span {
+    width: 150px; /* espaço do nome do atributo */
+  }
+
+  .attribute input {
+    width: 40px; /* input pequeno para 1-2 dígitos */
+    padding: 3px 5px;
+    text-align: center;
+  }
+
+  .level-control {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .level-control button {
+    width: 30px;
+    height: 30px;
+    margin-left: 5px;
+    margin-right: 5px;
+    cursor: pointer;
+  }
+
+  .abilities {
+    margin-top: 10px;
+  }
+
+  .ability {
+    margin-bottom: 12px;
+  }
+
+  .ability span.habName {
+    display: inline-block;
+    width: 200px; /* espaço para o nome da habilidade */
+    padding-right: 10px;
+  }
+
+  .ability button {
+    width: 25px;
+    height: 25px;
+    margin-right: 2px;
+    background-color: #555;
+    border: none;
+    cursor: pointer;
+    color: #fff;
+  }
+
+  .active {
+    background-color: #00ff00 !important;
+  }
+
+  /* Rodapé */
+  footer {
+    background-color: #222;
+    padding: 10px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  footer a {
+    color: #00aaff;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="mainContent">
+  <div id="left">
+    <button id="btnNewChar">Novo Personagem</button>
+    <div id="charactersList"></div>
+  </div>
+
+  <div id="right">
+    <input type="text" id="charName" placeholder="Nome do Personagem">
+    
+    <div id="attributes">
+      <div class="attribute"><span>Luta</span><input type="number" min="0" max="99" value="0" id="attrLuta"></div>
+      <div class="attribute"><span>Destreza</span><input type="number" min="0" max="99" value="0" id="attrDestreza"></div>
+      <div class="attribute"><span>Físico</span><input type="number" min="0" max="99" value="0" id="attrFisico"></div>
+      <div class="attribute"><span>Sobrenatural</span><input type="number" min="0" max="99" value="0" id="attrSobrenatural"></div>
+      <div class="attribute"><span>Conhecimento</span><input type="number" min="0" max="99" value="0" id="attrConhecimento"></div>
+      <div class="attribute"><span>Experiência</span><input type="number" min="0" max="99" value="0" id="attrExperiencia"></div>
+      <div class="attribute"><span>Carisma</span><input type="number" min="0" max="99" value="0" id="attrCarisma"></div>
+    </div>
+
+    <select id="charClass">
+      <option value="Porradeiro">Porradeiro</option>
+      <option value="Observador">Observador</option>
+      <option value="Seguidor">Seguidor</option>
+    </select>
+
+    <div class="level-control">
+      <span>Nível:</span>
+      <button id="decreaseLevel">-</button>
+      <span id="levelValue">1</span>
+      <button id="increaseLevel">+</button>
+    </div>
+
+    <div>Pontos de Vida: <span id="hpValue">0</span></div>
+
+    <div class="abilities" id="abilitiesContainer"></div>
+  </div>
+</div>
+
+<footer>
+Feito por Filipe Fonseca Bittencourt, siga no Instagram: <a href="https://www.instagram.com/filipin_cross" target="_blank">@filipin_cross</a>
+</footer>
+
+<script>
+let characters = {};
+let currentChar = null;
+
+// Carregar do localStorage ao iniciar
+if(localStorage.getItem('rpgCharacters')){
+  characters = JSON.parse(localStorage.getItem('rpgCharacters'));
+}
+
+// Habilidades especiais por atributo
+const specialAbilities = {
+  "Luta": "ESPECIAL",
+  "Destreza": "ESPECIAL",
+  "Físico": "ESPECIAL",
+  "Sobrenatural": "ESPECIAL",
+  "Conhecimento": "ESPECIAL",
+  "Experiência": "ESPECIAL",
+  "Carisma": "ESPECIAL"
+};
+
+const abilitiesData = {
+  "Luta": ["Artes Marciais", "Reflexos", specialAbilities["Luta"]],
+  "Destreza": ["Furtividade", "Iniciativa", "Pilotagem", "Pontaria", "Roubar", specialAbilities["Destreza"]],
+  "Físico": ["Flexibilidade", "Musculação", "Regeneração", "Sistema Imunológico", "VO2 Máximo", specialAbilities["Físico"]],
+  "Sobrenatural": ["Jejum", "Leitura do Sagrado", "Oração", "Ordem", specialAbilities["Sobrenatural"]],
+  "Conhecimento": ["Computação", "Exatas e Naturezas", "História Geral", "Investigação", "Letras", "Medicina", "Religião", specialAbilities["Conhecimento"]],
+  "Experiência": ["Adestramento", "Autocontrole", "Percepção", "Sobrevivência", "Tática de Guerra", specialAbilities["Experiência"]],
+  "Carisma": ["Diplomacia", "Intimidação", "Intuição", "Manipulação", "Performance", specialAbilities["Carisma"]]
+};
+
+const attrIds = {
+  "Luta": "Luta",
+  "Destreza": "Destreza",
+  "Físico": "Fisico",
+  "Sobrenatural": "Sobrenatural",
+  "Conhecimento": "Conhecimento",
+  "Experiência": "Experiencia",
+  "Carisma": "Carisma"
+};
+
+// Salvar no localStorage
+function saveToStorage(){
+  localStorage.setItem('rpgCharacters', JSON.stringify(characters));
+}
+
+// Cria novo personagem
+function createCharacter() {
+  document.getElementById('right').style.display = 'block';
+  let baseName = "Novo Personagem";
+  let name = baseName;
+  let i = 1;
+  while (characters[name]) {
+    name = `${baseName} ${i}`;
+    i++;
+  }
+
+  const char = {
+    name: name,
+    attributes: { Luta:0, Destreza:0, Físico:0, Sobrenatural:0, Conhecimento:0, Experiência:0, Carisma:0 },
+    class: "Porradeiro",
+    level: 1,
+    abilities: {}
+  };
+
+  // Inicializa habilidades com nível 0
+  for (const attr in abilitiesData) {
+    char.abilities[attr] = abilitiesData[attr].map(()=>0);
+  }
+
+  characters[name] = char;
+  currentChar = char;
+  renderCharactersList();
+  renderCharacter();
+  saveToStorage();
+}
+
+// Deleta personagem
+function deleteCharacter(name) {
+  delete characters[name];
+  if(currentChar && currentChar.name === name) currentChar = null;
+  renderCharactersList();
+  document.getElementById('right').style.display = 'none';
+  saveToStorage();
+}
+
+// Lista de personagens
+function renderCharactersList() {
+  const listDiv = document.getElementById('charactersList');
+  listDiv.innerHTML = '';
+  for (const name in characters) {
+    const div = document.createElement('div');
+    div.className = 'charItem';
+    const span = document.createElement('span');
+    span.textContent = name;
+    span.onclick = () => { 
+      currentChar = characters[name]; 
+      document.getElementById('right').style.display = 'block';
+      renderCharacter(); 
+    };
+    const delBtn = document.createElement('button');
+    delBtn.textContent = 'Excluir';
+    delBtn.onclick = () => deleteCharacter(name);
+    div.appendChild(span);
+    div.appendChild(delBtn);
+    listDiv.appendChild(div);
+  }
+}
+
+// Renderiza personagem
+function renderCharacter() {
+  if(!currentChar) return;
+  document.getElementById('charName').value = currentChar.name;
+  for(const attr in currentChar.attributes){
+    document.getElementById('attr' + attrIds[attr]).value = currentChar.attributes[attr];
+  }
+  document.getElementById('charClass').value = currentChar.class;
+  document.getElementById('levelValue').textContent = currentChar.level;
+  updateHP();
+  renderAbilities();
+}
+
+// Atualiza HP
+function updateHP() {
+  if(!currentChar) return;
+  const lvl = currentChar.level;
+  const Fisico = parseInt(currentChar.attributes["Físico"]) || 0;
+  let hp = 0;
+  switch(currentChar.class){
+    case "Porradeiro":
+      hp = 21 + Fisico + (lvl-1)*(5+Fisico);
+      break;
+    case "Observador":
+      hp = 14 + Fisico + (lvl-1)*(3+Fisico);
+      break;
+    case "Seguidor":
+      hp = 9 + Fisico + (lvl-1)*(2+Fisico);
+      break;
+  }
+  document.getElementById('hpValue').textContent = hp;
+}
+
+// Renderiza habilidades
+function renderAbilities() {
+  if(!currentChar) return;
+  const container = document.getElementById('abilitiesContainer');
+  container.innerHTML = '';
+  for(const attr in abilitiesData){
+    const div = document.createElement('div');
+    div.className = 'ability';
+    const title = document.createElement('strong');
+    title.textContent = `(${attr.substring(0,3).toUpperCase()}) ${attr} :`;
+    div.appendChild(title);
+    div.appendChild(document.createElement('br'));
+
+    abilitiesData[attr].forEach((hab,index)=>{
+      const habDiv = document.createElement('div');
+      habDiv.style.marginBottom = '5px';
+      const span = document.createElement('span');
+      span.textContent = hab;
+      span.className = "habName";
+      habDiv.appendChild(span);
+
+      let btnCount = hab === "ESPECIAL" ? 1 : 7;
+      for(let i=0;i<btnCount;i++){
+        const btn = document.createElement('button');
+        btn.textContent = i+1;
+        if(currentChar.abilities[attr][index] > i) btn.classList.add('active');
+        btn.onclick = () => {
+          if(currentChar.abilities[attr][index] === i+1){
+            currentChar.abilities[attr][index] = 0;
+          } else {
+            currentChar.abilities[attr][index] = i+1;
+          }
+          renderAbilities();
+          saveToStorage();
+        };
+        habDiv.appendChild(btn);
+      }
+      div.appendChild(habDiv);
+    });
+
+    container.appendChild(div);
+  }
+}
+
+// Eventos
+document.getElementById('btnNewChar').onclick = createCharacter;
+
+document.getElementById('increaseLevel').onclick = () => {
+  if(!currentChar) return;
+  if(currentChar.level<99) currentChar.level++;
+  document.getElementById('levelValue').textContent = currentChar.level;
+  updateHP();
+  saveToStorage();
+};
+
+document.getElementById('decreaseLevel').onclick = () => {
+  if(!currentChar) return;
+  if(currentChar.level>1) currentChar.level--;
+  document.getElementById('levelValue').textContent = currentChar.level;
+  updateHP();
+  saveToStorage();
+};
+
+document.getElementById('charClass').onchange = (e) => {
+  if(!currentChar) return;
+  currentChar.class = e.target.value;
+  updateHP();
+  saveToStorage();
+};
+
+for(const attr in attrIds){
+  document.getElementById('attr'+attrIds[attr]).oninput = (e) => {
+    if(!currentChar) return;
+    currentChar.attributes[attr] = parseInt(e.target.value) || 0;
+    updateHP();
+    saveToStorage();
+  };
+}
+
+document.getElementById('charName').oninput = (e) => {
+  if(!currentChar) return;
+  const oldName = currentChar.name;
+  currentChar.name = e.target.value || "Sem Nome";
+  if(oldName !== currentChar.name){
+    characters[currentChar.name] = currentChar;
+    if(oldName !== currentChar.name) delete characters[oldName];
+    renderCharactersList();
+    saveToStorage();
+  }
+};
+
+// Renderizar lista inicial
+renderCharactersList();
+
+</script>
+
+</body>
+</html>
